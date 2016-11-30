@@ -55,8 +55,12 @@ ts_stars = ts(ts_stars, freq=365, start=c(2012, 113))
 autoplot(ts_stars)
 
 # forecast
-pred <- forecast(ets(ts_stars), h = 1000)
+pred <- forecast(ets(ts_stars), h = 2000)
 
 # plot
-autoplot(pred) 
+theme_set(theme_gray(base_size = 14))
+autoplot(pred) +
+  ylab("Number of forecast stargazers") +
+  ggtitle("When will the forecast package reach 1,000 stargazers?",
+          subtitle = "Data accessed from the Github API via Gabor Csardi's gh package")
 ggsave(file = "forecast.png", width = 8, height = 6)
