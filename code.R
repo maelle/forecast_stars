@@ -4,6 +4,9 @@ library("ggplot2")
 library("viridis")
 library("dplyr")
 library("tidyr")
+library("viridis")
+library("forecast")
+library("janitor")
 
 # get data, loop because pagination
 stardates <- NULL
@@ -37,22 +40,23 @@ star_table <- group_by(star_table, date) %>%
 star_table <- mutate(star_table, 
                      cum_n = cumsum(n))
 
-ggplot(star_table,
-       aes(date, cum_n)) +
-  geom_point()
+complete_dates <- seq(from = min(star_table$date),
+                      to = max(star_table$date),
+                      by = "1 day")
 
-model1 <- lm("log(cum_n) ~ date", data = star_table)
-model2 <- lm("cum_n ~ date", data = star_table) 
-newdata <- data.frame(date = seq(from = Sys.Date(), by = "1 day", length = 1000))
-pred1 <- predict(model1, newdata = newdata)
-pred2 <- exp(predict(model2, newdata = newdata))
+# prepare ts
+ts_prep <- data.frame(date = complete_dates)
+ts_prep <- left_join(ts_prep, star_table,
+                     by = "date")
+ts_prep <- mutate(ts_prep, cum_n = zoo::na.locf(cum_n))
 
-pred_table <- mutate(newdata,
-                     exponential = pred1,
-                     linear = pred2)
-pred_table <- gather(pred_table, "model", "prediction", 2:3)
+ts_stars <- xts::xts(ts_prep$cum_n, ts_prep$date)
+ts_stars = ts(ts_stars, freq=365, start=c(2012, 113))
+autoplot(ts_stars)
 
-pred_table <- bind_rows(star_table, pred_table)
-ggplot(pred_table) +
-  geom_point(aes(date, cum_n)) +
-  geom_line(aes(date, prediction, col = model))
+# forecast
+pred <- forecast(ets(ts_stars), h = 1000)
+
+# plot
+autoplot(pred) 
+ggsave(file = "forecast.png", width = 8, height = 6)
